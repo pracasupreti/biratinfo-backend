@@ -28,6 +28,7 @@ export async function GET(
         await connect();
 
         const posts = await getPostsByStatus(status);
+        console.log(posts)
         return NextResponse.json({ success: true, posts }, { status: 200 });
 
     } catch (err: any) {

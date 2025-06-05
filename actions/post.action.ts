@@ -7,7 +7,6 @@ import { getDBId } from './user.action'
 import Category from '@/model/category.model'
 
 
-
 export async function submitPost(data: any) {
     const { userId } = await auth();
     const db_id = await getDBId();
@@ -75,7 +74,6 @@ export async function submitPost(data: any) {
     }
 }
 
-
 export async function getPostByUser() {
     try {
         await connect();
@@ -118,15 +116,11 @@ export async function getAllPostsByStatus(status: string) {
         const { userId } = await auth();
         if (!userId) throw new Error('Unauthorized');
 
-        console.log(status)
         const posts = await Post.find({
             status: status
         }).sort({ createdAt: -1 }).lean(); //len converts non-serializable data into plain JSON object but cannot convert all so for some we need to do manually
-
-
         // Deeply convert to plain JSON object
         const serializedPost = JSON.parse(JSON.stringify(posts));
-
 
         return { success: true, posts: serializedPost };
     } catch (error) {
@@ -143,8 +137,7 @@ export async function getPostsByStatus(status: string) {
 
         const db_id = await getDBId();
         if (!db_id) throw new Error('Error getting DB ID');
-        console.log(db_id)
-        console.log(status)
+
         const posts = await Post.find({
             userId: db_id,
             status: status
@@ -223,8 +216,9 @@ export async function updatePost(postId: string, updatedData: any) {
             updatedData.sponsoredAds = 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg';
         }
 
+
         const post = await Post.findOneAndUpdate(
-            { _id: objectId, userId: db_id },
+            { _id: objectId },
             updatedData,
             { new: true, lean: true }
         );

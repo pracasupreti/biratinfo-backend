@@ -16,6 +16,7 @@ export async function POST(req: Request) {
 
         await connect();
         const newPost = await submitPost(body);
+        console.log(newPost);
 
         console.log(body)
 

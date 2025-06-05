@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { verifyClerkToken } from '@/lib/auth';
 import { connect } from '@/lib/db';
-import { getPostsByStatus } from '@/actions/post.action';
+import { getAllPostsByStatus, getPostsByStatus } from '@/actions/post.action';
 
 const ALLOWED_STATUSES = new Set(['draft', 'pending', 'approved', 'scheduled', 'rejected']);
 
@@ -27,7 +27,7 @@ export async function GET(
 
         await connect();
 
-        const posts = await getPostsByStatus(status);
+        const posts = await getAllPostsByStatus(status);
         return NextResponse.json({ success: true, posts }, { status: 200 });
 
     } catch (err: any) {

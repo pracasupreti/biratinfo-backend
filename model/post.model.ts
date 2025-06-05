@@ -6,7 +6,7 @@ const PostSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
-    categoryId: { type: String, required: true },
+    categoryId: { type: String },
     status: { type: String, required: true },
     englishTitle: { type: String, required: true },
     nepaliTitle: { type: String, required: true },
