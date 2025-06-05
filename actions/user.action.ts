@@ -17,7 +17,7 @@ export async function handleUserCreated(user: any) {
         })
 
         // Save user to MongoDB
-        const { id, email_addresses, first_name, last_name } = user
+        const { id, email_addresses, first_name, last_name, imageUrl } = user
 
         const existingUser = await User.findOne({ clerkId: id })
         if (existingUser) {
@@ -28,6 +28,7 @@ export async function handleUserCreated(user: any) {
             email: email_addresses?.[0]?.email_address,
             firstName: first_name,
             lastName: last_name,
+            headshot: imageUrl,
             role: 'manager'
 
         }
@@ -52,6 +53,7 @@ export async function handleUserUpdated(user: any) {
                 email: user.email_addresses?.[0]?.email_address,
                 firstName: user.first_name,
                 lastName: user.last_name,
+                headshot: user.imageUrl,
                 role: user.public_metadata?.role || 'manager', // keep it in sync with Clerk
             }
         )

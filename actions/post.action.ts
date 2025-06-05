@@ -4,6 +4,7 @@ import { connect } from '@/lib/db'
 import Post from '@/model/post.model'
 import { auth } from '@clerk/nextjs/server'
 import { getDBId } from './user.action'
+import Category from '@/model/category.model'
 
 
 
@@ -26,17 +27,45 @@ export async function submitPost(data: any) {
             return { success: false, message: 'Post already exists' };
         }
 
-        // Step 1: Count posts in the same category
-        const category = data.category;
-        const postCount = await Post.countDocuments({ category });
+        // Adding Category Document
+        let categoryId: number | undefined;
+        let objectId;
 
-        // Step 2: Set category-specific ID (starts from 1)
-        const categoryId = postCount + 1;
+        if (data.status === 'approved') {
+            const mongoose = require('mongoose');
+            objectId = new mongoose.Types.ObjectId();
+
+            const category = data.category;
+            let categoryDoc = await Category.findOne({ category });
+
+            if (!categoryDoc) {
+                categoryId = 1;
+                categoryDoc = await Category.create({
+                    category,
+                    posts: [objectId],
+                    postCount: 1,
+                    status: 'approved',
+                });
+            } else {
+                categoryId = categoryDoc.postCount + 1;
+                await Category.updateOne(
+                    { _id: categoryDoc._id },
+                    {
+                        $inc: { postCount: 1 },
+                        $push: { posts: objectId }
+                    }
+                );
+            }
+        }
+        if (!data.sponsoredAds || data.sponsoredAds.trim() === '') {
+            data.sponsoredAds = 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg';
+        }
 
         await Post.create({
+            ...(objectId ? { _id: objectId } : {}),
             ...data,
             userId: db_id,
-            categoryId,
+            ...(categoryId && { categoryId })
         });
 
         return { success: true };
@@ -140,42 +169,76 @@ export async function updatePost(postId: string, updatedData: any) {
         const { userId } = await auth();
         const db_id = await getDBId();
         if (!userId || !db_id) throw new Error('Unauthorized');
-
         if (!postId) throw new Error('Post ID is required');
 
-        // Ensure postId is a valid ObjectId
         const mongoose = require('mongoose');
         const objectId = new mongoose.Types.ObjectId(postId);
 
-        console.log(updatedData.heroBanner)
+        const existing = await Post.findById(objectId);
+        if (!existing) throw new Error('Post not found');
 
-        // Check if a different post with the same title exists
         const existingPost = await Post.findOne({
             _id: { $ne: objectId },
             englishTitle: updatedData.englishTitle,
+            status: 'approved',
         });
 
         if (existingPost) throw new Error('A post with this title already exists');
 
-        // Perform the update, ensuring ownership
+
+        //Adding Category document
+        if (updatedData.status === 'approved') {
+            const category = updatedData.category;
+
+            // Find existing category
+            let categoryDoc = await Category.findOne({ category });
+
+            let categoryId;
+
+            if (!categoryDoc) {
+                categoryId = 1;
+
+                categoryDoc = await Category.create({
+                    category,
+                    posts: [objectId],
+                    postCount: 1,
+                    status: 'approved',
+                });
+            } else {
+                categoryId = categoryDoc.postCount + 1;
+
+                await Category.updateOne(
+                    { _id: categoryDoc._id },
+                    {
+                        $inc: { postCount: 1 },
+                        $push: { posts: objectId }
+                    }
+                );
+            }
+
+            updatedData.categoryId = categoryId;
+        }
+
+        if (!updatedData.sponsoredAds || updatedData.sponsoredAds.trim() === '') {
+            updatedData.sponsoredAds = 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg';
+        }
+
         const post = await Post.findOneAndUpdate(
             { _id: objectId, userId: db_id },
             updatedData,
-            { new: true, lean: true } // Return the updated post as a plain object
+            { new: true, lean: true }
         );
 
         if (!post) {
             return { success: false, message: 'Post not found or not owned by user' };
         }
 
-        // Return success
         return { success: true };
     } catch (error: any) {
         console.error('Error updating post:', error);
         return { success: false, message: error.message || 'Failed to update post' };
     }
 }
-
 
 export async function deletePost(postId: string) {
     try {

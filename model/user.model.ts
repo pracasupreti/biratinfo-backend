@@ -19,6 +19,10 @@ const UserSchema = new Schema({
         type: String,
         required: true,
     },
+    headshot: {
+        type: String,
+        required: true,
+    },
     role: {
         type: String,
         default: 'moderator'

@@ -17,6 +17,8 @@ export async function POST(req: Request) {
         await connect();
         const newPost = await submitPost(body);
 
+        console.log(body)
+
         return NextResponse.json({ success: true, post: newPost }, { status: 201 });
 
     } catch (err: any) {
