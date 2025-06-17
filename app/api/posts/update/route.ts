@@ -20,6 +20,12 @@ export async function PUT(req: Request) {
 
         await connect();
         const updatedPost = await updatePost(id, data);
+        if (!updatedPost.success) {
+            return NextResponse.json(
+                { success: false, message: updatedPost.message },
+                { status: updatedPost.code || 400 }
+            );
+        }
 
         return NextResponse.json({ success: true, post: updatedPost }, { status: 200 });
 

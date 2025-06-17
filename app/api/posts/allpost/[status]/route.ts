@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { verifyClerkToken } from '@/lib/auth';
 import { connect } from '@/lib/db';
-import { getAllPostsByStatus, getPostsByStatus } from '@/actions/post.action';
+import { getAllPostsByStatus } from '@/actions/post.action';
 
 const ALLOWED_STATUSES = new Set(['draft', 'pending', 'approved', 'scheduled', 'rejected']);
 

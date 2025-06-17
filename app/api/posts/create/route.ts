@@ -6,7 +6,6 @@ import { submitPost } from '@/actions/post.action';
 
 export async function POST(req: Request) {
     try {
-        console.log("Route Hit")
         const header = req.headers.get('Authorization')
         if (!header) throw new Error("Unauthorized")
         await verifyClerkToken(header);
@@ -16,9 +15,12 @@ export async function POST(req: Request) {
 
         await connect();
         const newPost = await submitPost(body);
-        console.log(newPost);
-
-        console.log(body)
+        if (!newPost.success) {
+            return NextResponse.json(
+                { success: false, message: newPost.message },
+                { status: 400 }
+            );
+        }
 
         return NextResponse.json({ success: true, post: newPost }, { status: 201 });
 

@@ -21,7 +21,11 @@ const UserSchema = new Schema({
     },
     role: {
         type: String,
-        default: 'moderator'
+        enum: ['manager', 'editor', 'admin'],
+        default: 'manager'
+    },
+    avatar: {
+        type: String,
     }
 }, {
     collection: 'users',

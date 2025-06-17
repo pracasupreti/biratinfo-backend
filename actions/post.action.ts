@@ -3,8 +3,9 @@
 import { connect } from '@/lib/db'
 import Post from '@/model/post.model'
 import { auth } from '@clerk/nextjs/server'
-import { getDBId } from './user.action'
+import { getDBId, getDBIdByClerId } from './user.action'
 import Category from '@/model/category.model'
+import { NextResponse } from 'next/server'
 
 
 export async function submitPost(data: any) {
@@ -55,17 +56,22 @@ export async function submitPost(data: any) {
                     }
                 );
             }
-        }
-        if (!data.sponsoredAds || data.sponsoredAds.trim() === '') {
-            data.sponsoredAds = 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg';
+            if (!data.sponsoredAds || data.sponsoredAds.trim() === '') {
+                data.sponsoredAds = 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg';
+            }
         }
 
-        await Post.create({
+
+        const result = await Post.create({
             ...(objectId ? { _id: objectId } : {}),
             ...data,
             userId: db_id,
             ...(categoryId && { categoryId })
         });
+
+        if (!result) {
+            return { success: false }
+        }
 
         return { success: true };
     } catch (error) {
@@ -84,6 +90,7 @@ export async function getPostByUser() {
         if (!db_id) throw new Error('Error getting DB ID');
 
         const posts = await Post.find({ userId: db_id }).sort({ createdAt: -1 })
+
         return { success: true, posts };
     } catch (error) {
         console.error('Error getting posts by user:', error);
@@ -176,7 +183,9 @@ export async function updatePost(postId: string, updatedData: any) {
             status: 'approved',
         });
 
-        if (existingPost) throw new Error('A post with this title already exists');
+        if (existingPost) {
+            return { success: false, message: 'A post with this title already exists', code: 409 }
+        }
 
 
         //Adding Category document
@@ -210,11 +219,13 @@ export async function updatePost(postId: string, updatedData: any) {
             }
 
             updatedData.categoryId = categoryId;
+
+            if (!updatedData.sponsoredAds || updatedData.sponsoredAds.trim() === '') {
+                updatedData.sponsoredAds = 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg';
+            }
         }
 
-        if (!updatedData.sponsoredAds || updatedData.sponsoredAds.trim() === '') {
-            updatedData.sponsoredAds = 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg';
-        }
+
 
 
         const post = await Post.findOneAndUpdate(
@@ -257,5 +268,24 @@ export async function deletePost(postId: string) {
         return { success: false, message: 'Failed to delete post' };
     }
 }
+
+export async function getApprovedPostCountByUser(userId: string) {
+    try {
+        await connect();
+        const db_id = await getDBIdByClerId(userId);
+        if (!db_id) throw new Error('Error getting DB ID');
+
+        const count = await Post.countDocuments({
+            userId: db_id,
+            status: 'approved',
+        });
+
+        return { success: true, count };
+    } catch (error) {
+        console.error('Error fetching approved post count:', error);
+        return { success: false, message: 'Failed to get post count' };
+    }
+}
+
 
 

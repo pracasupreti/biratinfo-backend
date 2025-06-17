@@ -4,7 +4,7 @@ import { verifyClerkToken } from '@/lib/auth';
 import { connect } from '@/lib/db';
 import { getPostsByStatus } from '@/actions/post.action';
 
-const ALLOWED_STATUSES = new Set(['draft', 'pending', 'approved', 'scheduled']);
+const ALLOWED_STATUSES = new Set(['draft', 'pending', 'approved', 'scheduled', 'rejected']);
 
 export async function GET(
     req: Request,
@@ -28,7 +28,12 @@ export async function GET(
         await connect();
 
         const posts = await getPostsByStatus(status);
-        console.log(posts)
+        if (!posts.success) {
+            return NextResponse.json(
+                { success: false, message: posts.message },
+                { status: 400 }
+            );
+        }
         return NextResponse.json({ success: true, posts }, { status: 200 });
 
     } catch (err: any) {

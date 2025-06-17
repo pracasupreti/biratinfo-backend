@@ -7,24 +7,49 @@ const PostSchema = new mongoose.Schema({
         required: true,
     },
     categoryId: { type: String },
-    status: { type: String, required: true },
+    status: {
+        type: String,
+        required: true,
+        enum: ['draft', 'pending', 'approved', 'rejected', 'scheduled']
+    },
     englishTitle: { type: String, required: true },
     nepaliTitle: { type: String, required: true },
-    blocks: [{ type: String }],
+    blocks: [{
+        content: { type: String, required: true }
+    }],
     excerpt: { type: String, required: true },
     featuredIn: [{ type: Boolean }],
     postInNetwork: [{ type: Boolean }],
     category: { type: String, required: true },
-    tags: { type: String },
+    tags: {
+        type: [String],
+        validate: {
+            validator: function (tags: string[]) {
+                return tags.length <= 5;
+            },
+            message: 'A post cannot have more than 5 tags'
+        }
+    },
     date: { type: String },
     time: { type: String },
-    author: { type: String },
+    authors: {
+        type: [String],
+        validate: {
+            validator: function (authors: string[]) {
+                return authors.length <= 2;
+            },
+            message: 'A post cannot have more than 2 authors'
+        }
+    },
     language: { type: String },
     readingTime: { type: String },
-    heroBanner: { type: String || null },
-    ogBanner: { type: String || null },
+    heroBanner: { type: String, default: null },
+    ogBanner: { type: String, default: null },
     imageCredit: { type: String },
-    sponsoredAds: { type: String, default: 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg' },
+    sponsoredAds: {
+        type: String,
+        default: 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg'
+    },
     access: { type: String },
     audioFile: { type: Buffer },
     canonicalUrl: { type: String },

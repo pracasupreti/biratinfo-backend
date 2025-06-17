@@ -43,6 +43,8 @@ export async function POST(req: Request) {
     }
 
     const { type, data } = evt
+    console.log("Type", type)
+    console.log("Data", data)
 
     try {
         switch (type) {

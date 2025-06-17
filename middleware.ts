@@ -12,12 +12,12 @@ const protectedRoutes = [
 // Public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
     '/',
-    '/sign-in',
-    '/sign-up',
     '/api/updateScheduledPost',
     '/api/webhooks(.*)',
     '/api/posts(.*)',
     '/api/public-posts(.*)',
+    '/api/users',
+    '/api/categories'
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

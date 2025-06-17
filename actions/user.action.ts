@@ -17,7 +17,8 @@ export async function handleUserCreated(user: any) {
         })
 
         // Save user to MongoDB
-        const { id, email_addresses, first_name, last_name } = user
+        const { id, email_addresses, first_name, last_name, image_url } = user
+        console.log("User", user)
 
         const existingUser = await User.findOne({ clerkId: id })
         if (existingUser) {
@@ -28,7 +29,8 @@ export async function handleUserCreated(user: any) {
             email: email_addresses?.[0]?.email_address,
             firstName: first_name,
             lastName: last_name,
-            role: 'manager'
+            role: 'manager',
+            avatar: image_url
 
         }
         const response = await User.create(newUser);
@@ -46,14 +48,20 @@ export async function handleUserUpdated(user: any) {
     try {
         await connect()
 
+        const updateData: any = {
+            email: user.email_addresses?.[0]?.email_address,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            role: user.public_metadata?.role || 'manager',
+        };
+
+        // Only update avatar if it exists in the Clerk user object
+        if (user.image_url) {
+            updateData.avatar = user.image_url;
+        }
         await User.updateOne(
             { clerkId: user.id },
-            {
-                email: user.email_addresses?.[0]?.email_address,
-                firstName: user.first_name,
-                lastName: user.last_name,
-                role: user.public_metadata?.role || 'manager', // keep it in sync with Clerk
-            }
+            updateData
         )
 
         console.log(`User ${user.id} updated with new role ${user.public_metadata?.role}`)
@@ -100,3 +108,114 @@ export async function getDBId() {
         return null;
     }
 }
+
+export async function getDBIdByClerId(userId: string) {
+    try {
+        await connect();
+
+        if (!userId) {
+            throw new Error('Unauthorized');
+        }
+
+        const user = await User.findOne({ clerkId: userId });
+
+        if (!user) {
+            throw new Error('User not found in DB');
+        }
+
+        return user._id;
+    } catch (error) {
+        console.error('[getDBId] Error:', error);
+        return null;
+    }
+}
+
+export async function getAuthors() {
+    try {
+        const { userId } = await auth();
+
+        if (!userId) {
+            throw new Error('Unauthorized');
+        }
+
+        const User = await clerkClient();
+        const currentUser = await User.users.getUser(userId);
+        const currentUserRole = currentUser.publicMetadata?.role as string;
+
+        // Determine permitted roles based on current user role
+        const roleAccessMap: Record<string, string[]> = {
+            manager: ['manager'],
+            editor: ['editor', 'manager'],
+            admin: ['editor', 'manager'],
+        };
+
+        const permittedRoles = roleAccessMap[currentUserRole] ?? [];
+
+        if (permittedRoles.length === 0) {
+            return { success: true, users: [] }; // No access
+        }
+
+        const users = await User.users.getUserList({ limit: 100 });
+
+        const formattedUsers = users.data
+            .filter(user => permittedRoles.includes(user.publicMetadata?.role as string))
+            .map(user => ({
+                id: user.id,
+                name: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
+                imageUrl: user.imageUrl,
+                role: user.publicMetadata?.role ?? '',
+            }));
+
+        return { success: true, users: formattedUsers };
+
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        return { success: false, message: 'Failed to fetch users' };
+    }
+}
+
+export async function getAuthor(userId: string) {
+    try {
+        const { userId: currentUserId } = await auth();
+
+        if (!currentUserId) {
+            throw new Error('Unauthorized');
+        }
+
+        const User = await clerkClient();
+        const user = await User.users.getUser(userId);
+
+        // Verify the requesting user has permission to view this author
+        const currentUser = await User.users.getUser(currentUserId);
+        const currentUserRole = currentUser.publicMetadata?.role as string;
+        const targetUserRole = user.publicMetadata?.role as string;
+
+        if (currentUserRole === 'editor' && !['editor', 'manager'].includes(targetUserRole)) {
+            throw new Error('Unauthorized to view this user');
+        }
+
+        if (currentUserRole === 'manager' && targetUserRole !== 'manager') {
+            throw new Error('Unauthorized to view this user');
+        }
+
+        return {
+            success: true,
+            user: {
+                id: user.id,
+                name: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
+                imageUrl: user.imageUrl,
+                role: user.publicMetadata?.role ?? ''
+            }
+        };
+
+    } catch (error) {
+        console.error('Error fetching user:', error);
+        return {
+            success: false,
+            message: error instanceof Error ? error.message : 'Failed to fetch user'
+        };
+    }
+}
+
+
+
