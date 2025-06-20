@@ -20,3 +20,12 @@ export async function verifyClerkToken(authHeader?: string) {
 
     return payload;
 }
+
+export function verifyApiKey(request: Request) {
+    const apiKeyHeader = request.headers.get('x-special-key');
+    const expectedKey = process.env.API_KEY;
+
+    if (!apiKeyHeader || apiKeyHeader !== expectedKey) {
+        throw new Error('Unauthorized: Invalid or missing API key');
+    }
+}

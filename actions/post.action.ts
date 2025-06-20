@@ -287,5 +287,51 @@ export async function getApprovedPostCountByUser(userId: string) {
     }
 }
 
+export async function getLatestSummaryByCategory(category: string) {
+    return await Post.find({ category, status: 'approved' })
+        .sort({ createdAt: -1 })
+        .select('nepaliTitle excerpt category categoryId authors heroBanner createdAt updatedAt tags')
+        .populate({
+            path: 'authors',
+            model: 'User',
+            localField: 'authors',
+            foreignField: 'clerkId',
+            justOne: false,
+            select: 'avatar firstName lastName clerkId',
+            match: { clerkId: { $exists: true } }
+        });
+}
+
+export async function getSummaryPostByTags(tag: string) {
+    return await Post.findOne({
+        status: 'approved',
+        tags: tag,
+    })
+        .sort({ createdAt: -1 }) // latest first
+        .select('nepaliTitle excerpt category categoryId authors readingTime heroBanner createdAt updatedAt')
+        .populate({
+            path: 'authors',
+            model: 'User',
+            localField: 'authors',
+            foreignField: 'clerkId',
+            justOne: false,
+            select: 'avatar firstName lastName clerkId',
+            match: { clerkId: { $exists: true } }
+        });
+}
+
+export async function getFullPostByCategoryAndId(category: string, id: string) {
+    return await Post.findOne({ categoryId: id, category, status: 'approved' })
+        .sort({ createdAt: -1 }).populate({
+            path: 'authors',
+            model: 'User',
+            localField: 'authors',
+            foreignField: 'clerkId',
+            justOne: false,
+            select: 'avatar firstName lastName clerkId',
+            match: { clerkId: { $exists: true } }
+        });
+}
+
 
 

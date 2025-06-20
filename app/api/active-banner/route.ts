@@ -1,4 +1,5 @@
 // app/api/banner/active/route.ts
+import { verifyApiKey, verifyClerkToken } from '@/lib/auth';
 import { connect } from '@/lib/db';
 import Advertisement from '@/model/advertisement.model';
 import { NextResponse } from 'next/server';
@@ -7,6 +8,9 @@ const VALID_NAMES = ['header_banner', 'sponsor_banner'];
 
 export async function POST(request: Request) {
     try {
+        const header = request.headers.get('Authorization')
+        if (!header) throw new Error("Unauthorized")
+        await verifyClerkToken(header);
         await connect();
         const { url, name } = await request.json();
 
@@ -53,6 +57,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
     try {
+        verifyApiKey(request);
         await connect();
         const { searchParams } = new URL(request.url);
         const name = searchParams.get('name');

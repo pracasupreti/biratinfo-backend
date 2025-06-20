@@ -33,7 +33,11 @@ const PostSchema = new mongoose.Schema({
     date: { type: String },
     time: { type: String },
     authors: {
-        type: [String],
+        type: [
+            {
+                type: String,
+                ref: 'User'
+            }],
         validate: {
             validator: function (authors: string[]) {
                 return authors.length <= 2;
@@ -45,7 +49,8 @@ const PostSchema = new mongoose.Schema({
     readingTime: { type: String },
     heroBanner: { type: String, default: null },
     ogBanner: { type: String, default: null },
-    imageCredit: { type: String },
+    heroImageCredit: { type: String },
+    ogImageCredit: { type: String },
     sponsoredAds: {
         type: String,
         default: 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg'
