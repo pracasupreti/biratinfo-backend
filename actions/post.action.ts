@@ -302,10 +302,11 @@ export async function getLatestSummaryByCategory(category: string) {
         });
 }
 
-export async function getSummaryPostByTags(tag: string) {
+
+export async function getFeaturedPost() {
     return await Post.findOne({
         status: 'approved',
-        tags: tag,
+        'featuredIn.0': true
     })
         .sort({ createdAt: -1 }) // latest first
         .select('nepaliTitle excerpt category categoryId authors readingTime heroBanner createdAt updatedAt')
