@@ -1,8 +1,12 @@
 import { getAuthors } from "@/actions/user.action";
+import { verifyClerkToken } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
+        const header = req.headers.get('Authorization')
+        if (!header) throw new Error("Unauthorized")
+        await verifyClerkToken(header);
         const result = await getAuthors();
 
         if (!result.success) {

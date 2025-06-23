@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
     try {
-        verifyApiKey(request);
+        verifyApiKey(request)
         await connect();
         const { searchParams } = new URL(request.url);
         const name = searchParams.get('name');

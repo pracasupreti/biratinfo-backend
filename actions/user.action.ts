@@ -18,7 +18,6 @@ export async function handleUserCreated(user: any) {
 
         // Save user to MongoDB
         const { id, email_addresses, first_name, last_name, image_url } = user
-        console.log("User", user)
 
         const existingUser = await User.findOne({ clerkId: id })
         if (existingUser) {

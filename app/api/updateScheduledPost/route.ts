@@ -7,7 +7,6 @@ import Post from '@/model/post.model';
 export async function GET() {
     try {
         await connect();
-        console.log("ROUTE HIT")
 
         // today's date 
         const today = new Date();

@@ -306,7 +306,7 @@ export async function getLatestSummaryByCategory(category: string) {
 export async function getFeaturedPost() {
     return await Post.findOne({
         status: 'approved',
-        'featuredIn.0': true
+        featuredIn: { $in: ['biratinfo.com'] }
     })
         .sort({ createdAt: -1 }) // latest first
         .select('nepaliTitle excerpt category categoryId authors readingTime heroBanner createdAt updatedAt')

@@ -18,8 +18,8 @@ const PostSchema = new mongoose.Schema({
         content: { type: String, required: true }
     }],
     excerpt: { type: String, required: true },
-    featuredIn: [{ type: Boolean }],
-    postInNetwork: [{ type: Boolean }],
+    featuredIn: [{ type: String }],
+    postInNetwork: [{ type: String }],
     category: { type: String, required: true },
     tags: {
         type: [String],
