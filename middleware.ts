@@ -16,7 +16,7 @@ const isPublicRoute = createRouteMatcher([
     '/api/webhooks(.*)',
     '/api/posts(.*)',
     '/api/public-posts(.*)',
-    '/api/users',
+    '/api/users(.*)',
     '/api/categories',
     '/api/active-banner',
     '/api/networks(.*)'

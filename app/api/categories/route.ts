@@ -3,10 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
     try {
-        console.log("Route Hit");
-
         const result = await getCategories();
-        console.log("result", result);
 
         if (!result.success) {
             return NextResponse.json(

@@ -2,6 +2,7 @@
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import User from '@/model/user.model'
 import { connect } from '@/lib/db'
+import Post from '@/model/post.model'
 
 //create new user
 export async function handleUserCreated(user: any) {
@@ -213,6 +214,56 @@ export async function getAuthor(userId: string) {
             success: false,
             message: error instanceof Error ? error.message : 'Failed to fetch user'
         };
+    }
+}
+
+export async function getAuthorDetails(authorId: string) {
+    try {
+        await connect();
+
+        // 1. Get basic user info from Clerk
+        const User = await clerkClient()
+        const user = await User.users.getUser(authorId);
+
+        const userId = await getDBIdByClerId(authorId)
+
+        // 2. Get all posts by this author (sorted by latest first)
+        const posts = await Post.find({ userId })
+            .sort({ createdAt: -1 })
+            .select('nepaliTitle excerpt category categoryId heroBanner ogBanner createdAt updatedAt readingTime')
+            .lean();
+
+        // 3. Calculate total post count and read count
+        const totalPosts = posts.length;
+
+        // 4. Get top 3 categories
+        const categoryCounts: Record<string, number> = {};
+        posts.forEach(post => {
+            categoryCounts[post.category] = (categoryCounts[post.category] || 0) + 1;
+        });
+
+        const topCategories = Object.entries(categoryCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([category]) => category);
+
+        // 5. Format the response
+        const userData = {
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            imageUrl: user.imageUrl,
+            joinedDate: user.createdAt,
+            totalPosts,
+            topCategories,
+            allposts: posts
+        }
+
+        return userData;
+
+    } catch (error) {
+        console.error('Error fetching author details:', error);
+        throw error;
     }
 }
 
