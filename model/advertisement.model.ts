@@ -1,4 +1,5 @@
 import mongoose, { models } from 'mongoose';
+import { unique } from 'next/dist/build/utils';
 
 const AdvertisementSchema = new mongoose.Schema({
     url: {
@@ -9,7 +10,16 @@ const AdvertisementSchema = new mongoose.Schema({
         type: String,
         required: true,
         enum: ['header_banner', 'sponsor_banner'],
-        unique: true // Ensures only one document per banner type
+    },
+    category: {
+        type: String,
+    },
+    link: {
+        type: String,
+    },
+    status: {
+        type: String,
+        enum: ['active', 'inactive']
     }
 }, { timestamps: true });
 

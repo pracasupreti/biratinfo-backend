@@ -18,7 +18,7 @@ const isPublicRoute = createRouteMatcher([
     '/api/public-posts(.*)',
     '/api/users(.*)',
     '/api/categories',
-    '/api/active-banner',
+    '/api/header-banners(.*)',
     '/api/networks(.*)'
 ]);
 

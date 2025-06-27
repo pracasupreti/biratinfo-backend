@@ -12,7 +12,7 @@ export async function POST(request: Request) {
         if (!header) throw new Error("Unauthorized")
         await verifyClerkToken(header);
         await connect();
-        const { url, name } = await request.json();
+        const { url, name, category, link, status } = await request.json();
 
         if (!url || !name) {
             return NextResponse.json(
@@ -21,30 +21,38 @@ export async function POST(request: Request) {
             );
         }
 
-        if (!VALID_NAMES.includes(name)) {
-            return NextResponse.json(
-                { error: `Invalid banner name. Valid names are: ${VALID_NAMES.join(', ')}` },
-                { status: 400 }
-            );
-        }
+        const exisitngDocument = await Advertisement.findOne({ url, category })
+        if (exisitngDocument) throw new Error("Document Already exists")
 
-        // Upsert the banner (create or update in one operation)
-        const updatedBanner = await Advertisement.findOneAndUpdate(
-            { name }, // Filter by name
-            { url },  // Update the URL
+
+        const newBanner = await Advertisement.create(
             {
-                upsert: true,    // Create if doesn't exist
-                new: true,       // Return the updated document
-                setDefaultsOnInsert: true
+                url: url,
+                name: name,
+                category: category,
+                status: status,
+                link: link
             }
-        );
+        )
+        console.log(newBanner)
 
-        if (!updatedBanner) throw new Error('Faile to create or update banner')
+        // // Upsert the banner (create or update in one operation)
+        // const updatedBanner = await Advertisement.create(
+        //     { url }, // Filter by url
+        //     { url, name, category, link },  // Update the URL
+        //     {
+        //         upsert: true,    // Create if doesn't exist
+        //         new: true,       // Return the updated document
+        //         setDefaultsOnInsert: true
+        //     }
+        // );
+
+        if (!newBanner) throw new Error('Faile to create banner')
 
         return NextResponse.json({
-            message: `${name} ${updatedBanner.wasCreated ? 'created' : 'updated'} successfully`,
-            banner: updatedBanner
-        }, { status: updatedBanner.wasCreated ? 201 : 200 });
+            message: `${name} ${newBanner.wasCreated ? 'created' : 'updated'} successfully`,
+            banner: newBanner
+        }, { status: newBanner.wasCreated ? 201 : 200 });
 
     } catch (error) {
         console.error('Error managing banner:', error);
@@ -59,21 +67,10 @@ export async function GET(request: Request) {
     try {
         verifyApiKey(request)
         await connect();
-        const { searchParams } = new URL(request.url);
-        const name = searchParams.get('name');
 
-        if (name) {
-            if (!VALID_NAMES.includes(name)) {
-                return NextResponse.json(
-                    { error: 'Invalid banner name' },
-                    { status: 400 }
-                );
-            }
-            const banner = await Advertisement.findOne({ name });
-            return NextResponse.json(banner);
-        } else {
-            throw new Error("Banner name is required")
-        }
+        const banner = await Advertisement.find({ name: 'header_banner' });
+        return NextResponse.json(banner);
+
     } catch (error) {
         console.error('Error fetching banners:', error);
         return NextResponse.json(
@@ -82,6 +79,35 @@ export async function GET(request: Request) {
         );
     }
 }
+
+//for frontend
+// export async function GET(request: Request) {
+//     try {
+//         verifyApiKey(request)
+//         await connect();
+//         const { searchParams } = new URL(request.url);
+//         const name = searchParams.get('name');
+
+//         if (name) {
+//             if (!VALID_NAMES.includes(name)) {
+//                 return NextResponse.json(
+//                     { error: 'Invalid banner name' },
+//                     { status: 400 }
+//                 );
+//             }
+//             const banner = await Advertisement.findOne({ name });
+//             return NextResponse.json(banner);
+//         } else {
+//             throw new Error("Banner name is required")
+//         }
+//     } catch (error) {
+//         console.error('Error fetching banners:', error);
+//         return NextResponse.json(
+//             { error: 'Failed to fetch banners' },
+//             { status: 500 }
+//         );
+//     }
+// }
 
 export async function DELETE(request: Request) {
     try {
