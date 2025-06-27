@@ -39,22 +39,3 @@ export async function PATCH(
     return NextResponse.json({ status: 200 });
 }
 
-
-export async function GET(request: Request) {
-    try {
-        verifyApiKey(request)
-        await connect();
-        const { searchParams } = new URL(request.url);
-        const category = searchParams.get('category');
-
-
-        const banner = await Advertisement.findOne({ category, status: 'active' });
-        return NextResponse.json(banner);
-    } catch (error) {
-        console.error('Error fetching banners:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch banners' },
-            { status: 500 }
-        );
-    }
-}
