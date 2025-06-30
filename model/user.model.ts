@@ -1,5 +1,13 @@
 import { Schema, model, models } from "mongoose";
 
+const SocialLinksSchema = new Schema({
+    facebook: { type: String },
+    instagram: { type: String },
+    twitter: { type: String },
+    youtube: { type: String },
+    tiktok: { type: String }
+});
+
 const UserSchema = new Schema({
     clerkId: {
         type: String,
@@ -26,6 +34,14 @@ const UserSchema = new Schema({
     },
     avatar: {
         type: String,
+    },
+    bio: {
+        type: String,
+        maxlength: 500
+    },
+    socialLinks: {
+        type: SocialLinksSchema,
+        default: {}
     }
 }, {
     collection: 'users',

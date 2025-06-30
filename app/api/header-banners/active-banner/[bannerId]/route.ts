@@ -1,4 +1,4 @@
-import { verifyApiKey, verifyClerkToken } from "@/lib/auth";
+import { verifyClerkToken } from "@/lib/auth";
 import { connect } from "@/lib/db";
 import Advertisement from "@/model/advertisement.model";
 import { NextResponse } from "next/server";

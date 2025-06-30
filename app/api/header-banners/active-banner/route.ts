@@ -13,7 +13,6 @@ export async function GET(request: Request) {
 
 
         const banner = await Advertisement.findOne({ category, status: 'active' });
-        console.log(banner)
         return NextResponse.json(banner);
     } catch (error) {
         console.error('Error fetching banners:', error);
