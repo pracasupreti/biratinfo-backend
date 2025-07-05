@@ -222,15 +222,16 @@ export async function getAuthorDetails(authorId: string) {
         await connect();
 
         // 1. Get basic user info from Clerk
-        const User = await clerkClient()
-        const user = await User.users.getUser(authorId);
 
         const userId = await getDBIdByClerId(authorId)
+
+        const user = await User.findById(userId)
+        if (!user) throw new Error("User not found")
 
         // 2. Get all posts by this author (sorted by latest first)
         const posts = await Post.find({ userId })
             .sort({ createdAt: -1 })
-            .select('nepaliTitle excerpt category categoryId heroBanner ogBanner createdAt updatedAt readingTime')
+            .select('title excerpt category categoryId heroBanner ogBanner createdAt updatedAt readingTime')
             .lean();
 
         // 3. Calculate total post count and read count
@@ -252,8 +253,10 @@ export async function getAuthorDetails(authorId: string) {
             id: user.id,
             firstName: user.firstName,
             lastName: user.lastName,
-            imageUrl: user.imageUrl,
+            imageUrl: user.avatar,
             joinedDate: user.createdAt,
+            bio: user.bio,
+            socialLinks: user.socialLinks,
             totalPosts,
             topCategories,
             allposts: posts

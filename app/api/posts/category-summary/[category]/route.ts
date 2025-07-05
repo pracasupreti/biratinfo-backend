@@ -16,6 +16,7 @@ export async function GET(
         await connect();
 
         const post = await getLatestSummaryByCategory(category);
+
         if (!post) throw new Error("No approved posts found");
 
         return NextResponse.json({ success: true, post }, { status: 200 });

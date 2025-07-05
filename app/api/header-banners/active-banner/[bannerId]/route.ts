@@ -2,40 +2,40 @@ import { verifyClerkToken } from "@/lib/auth";
 import { connect } from "@/lib/db";
 import Advertisement from "@/model/advertisement.model";
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 
 export async function PATCH(
     req: Request,
     { params }: { params: Promise<{ bannerId: string }> }
 ) {
-    const header = req.headers.get('Authorization')
-    if (!header) throw new Error("Unauthorized")
+    const header = req.headers.get("Authorization");
+    if (!header) throw new Error("Unauthorized");
     await verifyClerkToken(header);
 
     const { bannerId } = await params;
-    if (!bannerId) throw new Error("Id is required")
+    if (!bannerId) throw new Error("Id is required");
 
     const { status, category } = await req.json();
+    const objectId = new Types.ObjectId(bannerId);
 
     await connect();
-    // 1. Deactivate all banners in that category
+
+    // Set all others to inactive
     await Advertisement.updateMany(
-        { category, status: 'active', _id: { $ne: bannerId } },
-        { $set: { status: 'inactive' } }
+        { category, status: "active", _id: { $ne: objectId } },
+        { $set: { status: "inactive" } }
     );
 
+    // Set current to active
     const updatedBanner = await Advertisement.findByIdAndUpdate(
-        bannerId,
+        objectId,
         { status },
         { new: true }
     );
 
     if (!updatedBanner) {
-        return NextResponse.json(
-            { error: 'Failed to update status' },
-            { status: 403 }
-        );
+        return NextResponse.json({ error: "Failed to update status" }, { status: 403 });
     }
 
     return NextResponse.json({ status: 200 });
 }
-

@@ -14,6 +14,7 @@ export async function POST(req: Request) {
         if (!body) throw new Error("Body parameters are required")
 
         await connect();
+
         const newPost = await submitPost(body);
         if (!newPost.success) {
             return NextResponse.json(

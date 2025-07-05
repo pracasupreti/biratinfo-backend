@@ -5,7 +5,6 @@ import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
     try {
-        console.log("ROUTE HIT")
         verifyApiKey(request)
         await connect();
         const { searchParams } = new URL(request.url);

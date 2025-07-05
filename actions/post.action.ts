@@ -5,8 +5,85 @@ import Post from '@/model/post.model'
 import { auth } from '@clerk/nextjs/server'
 import { getDBId, getDBIdByClerId } from './user.action'
 import Category from '@/model/category.model'
-import { NextResponse } from 'next/server'
+import Tag from '@/model/tags.model'
 
+
+interface TagOperationResult {
+    success: boolean;
+    message: string;
+    updatedTags?: any[];
+    errors?: any[];
+}
+export async function handlePostApprovalTags(tags: string[], isNepali: boolean): Promise<TagOperationResult> {
+    try {
+        await connect();
+
+        const results = [];
+        const errors = [];
+        const processedTags = new Set<string>();
+
+        for (const rawTag of tags) {
+            try {
+                const tagName = rawTag.trim().toLowerCase();
+                if (!tagName || processedTags.has(tagName)) continue;
+
+                processedTags.add(tagName);
+                const occurrences = tags.filter(t => t.trim().toLowerCase() === tagName).length;
+
+                const field = isNepali ? 'np' : 'en';
+                const otherField = isNepali ? 'en' : 'np';
+
+                // Try to find tag by either en or np field
+                const existingTag = await Tag.findOne({
+                    $or: [
+                        { en: tagName },
+                        { np: tagName }
+                    ]
+                });
+
+                if (existingTag) {
+                    // Fill missing field if not already set
+                    if (!existingTag[field]) {
+                        existingTag[field] = tagName;
+                    }
+                    existingTag.count = (existingTag.count || 0) + occurrences;
+                    await existingTag.save();
+                    results.push(existingTag);
+                } else {
+                    // Create new tag (with both fields, one can be empty string)
+                    const newTag = await Tag.create({
+                        [field]: tagName,
+                        [otherField]: '',
+                        count: occurrences
+                    });
+                    results.push(newTag);
+                }
+            } catch (err) {
+                console.error(`Error processing tag "${rawTag}":`, err);
+                errors.push({
+                    tag: rawTag,
+                    error: err instanceof Error ? err.message : 'Unknown error'
+                });
+            }
+        }
+
+        return {
+            success: errors.length === 0,
+            message: errors.length > 0
+                ? `Processed with ${errors.length} errors`
+                : 'All tags processed successfully',
+            updatedTags: results,
+            errors: errors.length > 0 ? errors : undefined
+        };
+    } catch (error) {
+        console.error('Global error in handlePostApprovalTags:', error);
+        return {
+            success: false,
+            message: 'Failed to process tags',
+            errors: [{ error: error instanceof Error ? error.message : 'Unknown error' }]
+        };
+    }
+}
 
 export async function submitPost(data: any) {
     const { userId } = await auth();
@@ -21,8 +98,13 @@ export async function submitPost(data: any) {
 
     try {
         await connect();
+        console.log(data)
 
-        const existingPost = await Post.findOne({ englishTitle: data.englishTitle });
+        const existingPost = await Post.findOne({
+            $or: [
+                { title: data.title }
+            ]
+        });
         if (existingPost) {
             return { success: false, message: 'Post already exists' };
         }
@@ -56,11 +138,21 @@ export async function submitPost(data: any) {
                     }
                 );
             }
-            if (!data.sponsoredAds || data.sponsoredAds.trim() === '') {
-                data.sponsoredAds = 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg';
+
+            // Handle tag updates 
+            if (data.tags && data.tags.length > 0) {
+                const tagResult = await handlePostApprovalTags(data.tags, data.isNepali || false);
+
+                if (!tagResult.success) {
+                    // Log detailed errors for debugging
+                    console.error('Tag processing errors:', tagResult.errors);
+
+                    // Throw an error that will stop the approval process
+                    throw new Error('Failed to process tags');
+                }
+
             }
         }
-
 
         const result = await Post.create({
             ...(objectId ? { _id: objectId } : {}),
@@ -179,9 +271,13 @@ export async function updatePost(postId: string, updatedData: any) {
 
         const existingPost = await Post.findOne({
             _id: { $ne: objectId },
-            englishTitle: updatedData.englishTitle,
             status: 'approved',
+            $or: [
+                { englishTitle: updatedData.title },
+                { title: updatedData.title }
+            ]
         });
+        console.log(existingPost)
 
         if (existingPost) {
             return { success: false, message: 'A post with this title already exists', code: 409 }
@@ -220,8 +316,18 @@ export async function updatePost(postId: string, updatedData: any) {
 
             updatedData.categoryId = categoryId;
 
-            if (!updatedData.sponsoredAds || updatedData.sponsoredAds.trim() === '') {
-                updatedData.sponsoredAds = 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg';
+            // Handle tag updates 
+            if (updatedData.tags && updatedData.tags.length > 0) {
+                const tagResult = await handlePostApprovalTags(updatedData.tags, updatedData.isNepali || false);
+
+                if (!tagResult.success) {
+                    // Log detailed errors for debugging
+                    console.error('Tag processing errors:', tagResult.errors);
+
+                    // Throw an error that will stop the approval process
+                    throw new Error('Failed to process tags');
+                }
+
             }
         }
 
@@ -269,6 +375,28 @@ export async function deletePost(postId: string) {
     }
 }
 
+export async function deletePostById(postId: string) {
+    try {
+        await connect();
+
+        const { userId } = await auth();
+        if (!userId) throw new Error('Unauthorized');
+
+        const result = await Post.findOneAndDelete({
+            _id: postId,
+        });
+
+        if (!result) {
+            return { success: false, message: 'Post not found or unauthorized' };
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        return { success: false, message: 'Failed to delete post' };
+    }
+}
+
 export async function getApprovedPostCountByUser(userId: string) {
     try {
         await connect();
@@ -290,7 +418,7 @@ export async function getApprovedPostCountByUser(userId: string) {
 export async function getLatestSummaryByCategory(category: string) {
     return await Post.find({ category, status: 'approved' })
         .sort({ createdAt: -1 })
-        .select('nepaliTitle excerpt category categoryId authors heroBanner createdAt updatedAt tags')
+        .select('title excerpt category categoryId authors heroBanner createdAt updatedAt featuredIn')
         .populate({
             path: 'authors',
             model: 'User',
@@ -309,7 +437,7 @@ export async function getFeaturedPost() {
         featuredIn: { $in: ['biratinfo.com'] }
     })
         .sort({ createdAt: -1 }) // latest first
-        .select('nepaliTitle excerpt category categoryId authors readingTime heroBanner createdAt updatedAt')
+        .select('title excerpt category categoryId authors readingTime heroBanner createdAt updatedAt')
         .populate({
             path: 'authors',
             model: 'User',

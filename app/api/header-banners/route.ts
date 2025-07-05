@@ -2,9 +2,10 @@
 import { verifyApiKey, verifyClerkToken } from '@/lib/auth';
 import { connect } from '@/lib/db';
 import Advertisement from '@/model/advertisement.model';
+import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
 
-const VALID_NAMES = ['header_banner', 'sponsor_banner'];
+// const VALID_NAMES = ['header_banner', 'sponsor_banner'];
 
 export async function POST(request: Request) {
     try {
@@ -111,29 +112,42 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
     try {
+        const header = request.headers.get('Authorization')
+        if (!header) throw new Error("Unauthorized")
+        await verifyClerkToken(header);
         await connect();
         const { searchParams } = new URL(request.url);
-        const name = searchParams.get('name');
+        const id = searchParams.get('id');
 
-        if (name) {
-            if (!VALID_NAMES.includes(name)) {
-                return NextResponse.json(
-                    { error: 'Invalid banner name' },
-                    { status: 400 }
-                );
-            }
-            const result = await Advertisement.deleteOne({ name });
-            return NextResponse.json({
-                message: result.deletedCount > 0
-                    ? `${name} deleted successfully`
-                    : `${name} not found`
-            });
-        } else {
-            const result = await Advertisement.deleteMany({ name: { $in: VALID_NAMES } });
-            return NextResponse.json({
-                message: `Deleted ${result.deletedCount} banners`
-            });
+        if (!id) {
+            return NextResponse.json(
+                { error: 'Missing banner ID' },
+                { status: 400 }
+            );
         }
+
+        // ✅ Validate ID format
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json(
+                { error: 'Invalid banner ID format' },
+                { status: 400 }
+            );
+        }
+
+        const objectId = new mongoose.Types.ObjectId(id);
+
+        const result = await Advertisement.findByIdAndDelete(objectId);
+
+        if (!result) {
+            return NextResponse.json(
+                { error: 'Banner not found' },
+                { status: 404 }
+            );
+        }
+
+        return NextResponse.json({
+            message: `Banner with ID ${id} deleted successfully`
+        });
     } catch (error) {
         console.error('Error deleting banner:', error);
         return NextResponse.json(

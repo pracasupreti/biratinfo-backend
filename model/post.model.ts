@@ -1,25 +1,49 @@
 import mongoose, { models } from 'mongoose';
 
+const ImageDataSchema = new mongoose.Schema({
+    url: { type: String },
+    public_id: { type: String }
+});
+
+const CTASchema = new mongoose.Schema({
+    name: { type: String },
+    url: { type: String }
+});
+
+const AudioDataSchema = new mongoose.Schema({
+    url: { type: String },
+    public_id: { type: String },
+    duration: { type: Number }
+});
+
+
+
 const PostSchema = new mongoose.Schema({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
-    },
-    categoryId: { type: String },
-    status: {
-        type: String,
-        required: true,
-        enum: ['draft', 'pending', 'approved', 'rejected', 'scheduled']
-    },
-    englishTitle: { type: String, required: true },
-    nepaliTitle: { type: String, required: true },
-    blocks: [{
-        content: { type: String, required: true }
-    }],
+    // Core Fields
+    title: { type: String, required: true },
     excerpt: { type: String, required: true },
+    isNepali: { type: Boolean, default: false },
+    content: { type: String, required: true },
     featuredIn: [{ type: String }],
     postInNetwork: [{ type: String }],
+
+    // Media Fields
+    heroBanner: { type: ImageDataSchema },
+    ogBanner: { type: ImageDataSchema },
+    heroImageCredit: { type: String, default: '' },
+    ogImageCredit: { type: String, default: '' },
+    audio: { type: AudioDataSchema },
+    audioCredit: { type: String, default: '' },
+    sponsoredAds: {
+        type: ImageDataSchema, default: {
+            url: 'https://res.cloudinary.com/biratinfo/image/upload/v1751554796/advertisement_rnj6jy.jpg',
+            public_id: 'default_ad'
+        }
+    },
+    // Call to Action
+    ctas: [CTASchema],
+
+    // Other Fields
     category: { type: String, required: true },
     tags: {
         type: [String],
@@ -33,11 +57,7 @@ const PostSchema = new mongoose.Schema({
     date: { type: String },
     time: { type: String },
     authors: {
-        type: [
-            {
-                type: String,
-                ref: 'User'
-            }],
+        type: [String],
         validate: {
             validator: function (authors: string[]) {
                 return authors.length <= 2;
@@ -47,17 +67,22 @@ const PostSchema = new mongoose.Schema({
     },
     language: { type: String },
     readingTime: { type: String },
-    heroBanner: { type: String, default: null },
-    ogBanner: { type: String, default: null },
-    heroImageCredit: { type: String },
-    ogImageCredit: { type: String },
-    sponsoredAds: {
-        type: String,
-        default: 'https://res.cloudinary.com/biratinfo/image/upload/v1749053676/posts/9d870052-32f7-408a-8cf7-394a483edbe9.jpg'
-    },
     access: { type: String },
-    audioFile: { type: Buffer },
     canonicalUrl: { type: String },
+
+    // Status and ownership
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+    },
+    status: {
+        type: String,
+        required: true,
+        enum: ['draft', 'pending', 'approved', 'rejected', 'scheduled'],
+        default: 'draft'
+    },
+    categoryId: { type: String }
 }, {
     collection: 'posts',
     timestamps: true,
