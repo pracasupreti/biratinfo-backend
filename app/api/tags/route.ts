@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { verifyApiKey } from "@/lib/auth";
 import { connect } from "@/lib/db";
 import Tag from "@/model/tags.model";

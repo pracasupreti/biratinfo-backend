@@ -1,5 +1,4 @@
 import mongoose, { models } from 'mongoose';
-import { unique } from 'next/dist/build/utils';
 
 const AdvertisementSchema = new mongoose.Schema({
     url: {

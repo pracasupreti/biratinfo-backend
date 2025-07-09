@@ -5,13 +5,13 @@ import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
     try {
+        console.log("ROUTE HIT")
         verifyApiKey(request)
         await connect();
         const { searchParams } = new URL(request.url);
         const category = searchParams.get('category');
 
-
-        const banner = await Advertisement.findOne({ name: 'header_banner', category, status: 'active' });
+        const banner = await Advertisement.findOne({ name: 'sponsor_banner', category, status: 'active' });
         return NextResponse.json(banner);
     } catch (error) {
         console.error('Error fetching banners:', error);

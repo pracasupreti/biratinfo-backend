@@ -68,7 +68,7 @@ export async function GET(request: Request) {
         verifyApiKey(request)
         await connect();
 
-        const banner = await Advertisement.find({ name: 'header_banner' });
+        const banner = await Advertisement.find({ name: 'sponsor_banner' });
         return NextResponse.json(banner);
 
     } catch (error) {

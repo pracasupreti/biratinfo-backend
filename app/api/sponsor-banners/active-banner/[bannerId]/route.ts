@@ -22,7 +22,12 @@ export async function PATCH(
 
     // Set all others to inactive
     await Advertisement.updateMany(
-        { name: 'header_banner', category, status: "active", _id: { $ne: objectId } },
+        {
+            name: 'sponsor_banner',
+            category,
+            status: "active",
+            _id: { $ne: objectId }
+        },
         { $set: { status: "inactive" } }
     );
 

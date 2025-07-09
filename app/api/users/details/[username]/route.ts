@@ -5,17 +5,17 @@ import { getAuthorDetails } from '@/actions/user.action';
 
 export async function GET(
     req: Request,
-    { params }: { params: Promise<{ authorId: string }> }
+    { params }: { params: Promise<{ username: string }> }
 ) {
     try {
         verifyApiKey(req);
-        const { authorId } = await params;
+        const { username } = await params;
 
-        if (!authorId) {
-            throw new Error("Author ID is required");
+        if (!username) {
+            throw new Error("Username is required");
         }
 
-        const authorDetails = await getAuthorDetails(authorId);
+        const authorDetails = await getAuthorDetails(username);
         if (!authorDetails) {
             return NextResponse.json(
                 { error: 'Failed to fetch user details' },

@@ -425,7 +425,26 @@ export async function getLatestSummaryByCategory(category: string) {
             localField: 'authors',
             foreignField: 'clerkId',
             justOne: false,
-            select: 'avatar firstName lastName clerkId',
+            select: 'avatar firstName lastName clerkId username',
+            match: { clerkId: { $exists: true } }
+        });
+}
+
+export async function getLatestSummary(categories: string[]) {
+    return await Post.find({
+        category: { $in: categories },
+        status: 'approved',
+        featuredIn: { $ne: 'biratinfo.com' }
+    })
+        .sort({ createdAt: -1 })
+        .select('title excerpt category categoryId authors heroBanner createdAt updatedAt featuredIn')
+        .populate({
+            path: 'authors',
+            model: 'User',
+            localField: 'authors',
+            foreignField: 'clerkId',
+            justOne: false,
+            select: 'avatar firstName lastName clerkId username',
             match: { clerkId: { $exists: true } }
         });
 }
@@ -444,7 +463,7 @@ export async function getFeaturedPost() {
             localField: 'authors',
             foreignField: 'clerkId',
             justOne: false,
-            select: 'avatar firstName lastName clerkId',
+            select: 'avatar firstName lastName clerkId username',
             match: { clerkId: { $exists: true } }
         });
 }
@@ -457,7 +476,7 @@ export async function getFullPostByCategoryAndId(category: string, id: string) {
             localField: 'authors',
             foreignField: 'clerkId',
             justOne: false,
-            select: 'avatar firstName lastName clerkId',
+            select: 'avatar firstName lastName clerkId bio socialLinks username',
             match: { clerkId: { $exists: true } }
         });
 }

@@ -21,9 +21,9 @@ const AudioDataSchema = new mongoose.Schema({
 const PostSchema = new mongoose.Schema({
     // Core Fields
     title: { type: String, required: true },
-    excerpt: { type: String, required: true },
+    excerpt: { type: String, default: '' },
     isNepali: { type: Boolean, default: false },
-    content: { type: String, required: true },
+    content: { type: String, default: '' },
     featuredIn: [{ type: String }],
     postInNetwork: [{ type: String }],
 
@@ -36,15 +36,16 @@ const PostSchema = new mongoose.Schema({
     audioCredit: { type: String, default: '' },
     sponsoredAds: {
         type: ImageDataSchema, default: {
-            url: 'https://res.cloudinary.com/biratinfo/image/upload/v1751554796/advertisement_rnj6jy.jpg',
-            public_id: 'default_ad'
+            url: '',
+            public_id: ''
         }
     },
+    sponsorLink: { type: String, default: '' },
     // Call to Action
     ctas: [CTASchema],
 
     // Other Fields
-    category: { type: String, required: true },
+    category: { type: String },
     tags: {
         type: [String],
         validate: {

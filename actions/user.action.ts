@@ -18,7 +18,7 @@ export async function handleUserCreated(user: any) {
         })
 
         // Save user to MongoDB
-        const { id, email_addresses, first_name, last_name, image_url } = user
+        const { id, email_addresses, first_name, last_name, username, image_url } = user
 
         const existingUser = await User.findOne({ clerkId: id })
         if (existingUser) {
@@ -29,6 +29,7 @@ export async function handleUserCreated(user: any) {
             email: email_addresses?.[0]?.email_address,
             firstName: first_name,
             lastName: last_name,
+            username: username || '',
             role: 'manager',
             avatar: image_url
 
@@ -52,6 +53,7 @@ export async function handleUserUpdated(user: any) {
             email: user.email_addresses?.[0]?.email_address,
             firstName: user.first_name,
             lastName: user.last_name,
+            username: user.username || '',
             role: user.public_metadata?.role || 'manager',
         };
 
@@ -124,6 +126,27 @@ export async function getDBIdByClerId(userId: string) {
         }
 
         return user._id;
+    } catch (error) {
+        console.error('[getDBId] Error:', error);
+        return null;
+    }
+}
+
+export async function getClerkIdByUsername(username: string) {
+    try {
+        await connect();
+
+        if (!username) {
+            throw new Error('Unauthorized');
+        }
+
+        const user = await User.findOne({ username });
+
+        if (!user) {
+            throw new Error('User not found in DB');
+        }
+
+        return user.clerkId;
     } catch (error) {
         console.error('[getDBId] Error:', error);
         return null;
@@ -217,19 +240,19 @@ export async function getAuthor(userId: string) {
     }
 }
 
-export async function getAuthorDetails(authorId: string) {
+export async function getAuthorDetails(username: string) {
     try {
         await connect();
 
         // 1. Get basic user info from Clerk
 
-        const userId = await getDBIdByClerId(authorId)
+        const clerkId = await getClerkIdByUsername(username)
 
-        const user = await User.findById(userId)
+        const user = await User.findOne({ clerkId })
         if (!user) throw new Error("User not found")
 
         // 2. Get all posts by this author (sorted by latest first)
-        const posts = await Post.find({ userId })
+        const posts = await Post.find({ authors: { $in: [clerkId] } })
             .sort({ createdAt: -1 })
             .select('title excerpt category categoryId heroBanner ogBanner createdAt updatedAt readingTime')
             .lean();
@@ -253,6 +276,7 @@ export async function getAuthorDetails(authorId: string) {
             id: user.id,
             firstName: user.firstName,
             lastName: user.lastName,
+            username: user.username,
             imageUrl: user.avatar,
             joinedDate: user.createdAt,
             bio: user.bio,
