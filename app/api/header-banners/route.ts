@@ -1,19 +1,21 @@
-// app/api/banner/active/route.ts
 import { verifyApiKey, verifyClerkToken } from '@/lib/auth';
 import { connect } from '@/lib/db';
 import Advertisement from '@/model/advertisement.model';
 import mongoose from 'mongoose';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { handleCors } from '@/lib/cors';
 
-// const VALID_NAMES = ['header_banner', 'sponsor_banner'];
+export async function POST(req: NextRequest) {
+    const corsRes = handleCors(req);
+    if (corsRes) return corsRes;
 
-export async function POST(request: Request) {
     try {
-        const header = request.headers.get('Authorization')
-        if (!header) throw new Error("Unauthorized")
+        const header = req.headers.get('Authorization');
+        if (!header) throw new Error('Unauthorized');
         await verifyClerkToken(header);
         await connect();
-        const { url, name, category, link, status } = await request.json();
+
+        const { url, name, category, link, status } = await req.json();
 
         if (!url || !name) {
             return NextResponse.json(
@@ -22,136 +24,101 @@ export async function POST(request: Request) {
             );
         }
 
-        const exisitngDocument = await Advertisement.findOne({ url, category })
-        if (exisitngDocument) throw new Error("Document Already exists")
+        const existingDocument = await Advertisement.findOne({ url, category });
+        if (existingDocument) throw new Error('Document Already exists');
 
+        const newBanner = await Advertisement.create({
+            url,
+            name,
+            category,
+            status,
+            link,
+        });
 
-        const newBanner = await Advertisement.create(
+        if (!newBanner) throw new Error('Failed to create banner');
+
+        const res = NextResponse.json(
             {
-                url: url,
-                name: name,
-                category: category,
-                status: status,
-                link: link
-            }
-        )
+                message: `${name} ${newBanner.wasCreated ? 'created' : 'updated'} successfully`,
+                banner: newBanner,
+            },
+            { status: newBanner.wasCreated ? 201 : 200 }
+        );
 
-        // // Upsert the banner (create or update in one operation)
-        // const updatedBanner = await Advertisement.create(
-        //     { url }, // Filter by url
-        //     { url, name, category, link },  // Update the URL
-        //     {
-        //         upsert: true,    // Create if doesn't exist
-        //         new: true,       // Return the updated document
-        //         setDefaultsOnInsert: true
-        //     }
-        // );
+        res.headers.set('Access-Control-Allow-Origin', req.headers.get('origin') || '*');
+        res.headers.set('Vary', 'Origin');
 
-        if (!newBanner) throw new Error('Faile to create banner')
-
-        return NextResponse.json({
-            message: `${name} ${newBanner.wasCreated ? 'created' : 'updated'} successfully`,
-            banner: newBanner
-        }, { status: newBanner.wasCreated ? 201 : 200 });
-
+        return res;
     } catch (error) {
         console.error('Error managing banner:', error);
-        return NextResponse.json(
-            { error: 'Failed to manage banner' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to manage banner' }, { status: 500 });
     }
 }
 
-export async function GET(request: Request) {
+export async function GET(req: NextRequest) {
+    const corsRes = handleCors(req);
+    if (corsRes) return corsRes;
+
     try {
-        verifyApiKey(request)
+        verifyApiKey(req);
         await connect();
 
         const banner = await Advertisement.find({ name: 'header_banner' });
-        return NextResponse.json(banner);
 
+        const res = NextResponse.json(banner);
+
+        res.headers.set('Access-Control-Allow-Origin', req.headers.get('origin') || '*');
+        res.headers.set('Vary', 'Origin');
+
+        return res;
     } catch (error) {
         console.error('Error fetching banners:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch banners' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to fetch banners' }, { status: 500 });
     }
 }
 
-//for frontend
-// export async function GET(request: Request) {
-//     try {
-//         verifyApiKey(request)
-//         await connect();
-//         const { searchParams } = new URL(request.url);
-//         const name = searchParams.get('name');
+export async function DELETE(req: NextRequest) {
+    const corsRes = handleCors(req);
+    if (corsRes) return corsRes;
 
-//         if (name) {
-//             if (!VALID_NAMES.includes(name)) {
-//                 return NextResponse.json(
-//                     { error: 'Invalid banner name' },
-//                     { status: 400 }
-//                 );
-//             }
-//             const banner = await Advertisement.findOne({ name });
-//             return NextResponse.json(banner);
-//         } else {
-//             throw new Error("Banner name is required")
-//         }
-//     } catch (error) {
-//         console.error('Error fetching banners:', error);
-//         return NextResponse.json(
-//             { error: 'Failed to fetch banners' },
-//             { status: 500 }
-//         );
-//     }
-// }
-
-export async function DELETE(request: Request) {
     try {
-        const header = request.headers.get('Authorization')
-        if (!header) throw new Error("Unauthorized")
+        const header = req.headers.get('Authorization');
+        if (!header) throw new Error('Unauthorized');
         await verifyClerkToken(header);
         await connect();
-        const { searchParams } = new URL(request.url);
+
+        const { searchParams } = new URL(req.url);
         const id = searchParams.get('id');
 
         if (!id) {
-            return NextResponse.json(
-                { error: 'Missing banner ID' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Missing banner ID' }, { status: 400 });
         }
 
-        // ✅ Validate ID format
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            return NextResponse.json(
-                { error: 'Invalid banner ID format' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Invalid banner ID format' }, { status: 400 });
         }
 
         const objectId = new mongoose.Types.ObjectId(id);
-
         const result = await Advertisement.findByIdAndDelete(objectId);
 
         if (!result) {
-            return NextResponse.json(
-                { error: 'Banner not found' },
-                { status: 404 }
-            );
+            return NextResponse.json({ error: 'Banner not found' }, { status: 404 });
         }
 
-        return NextResponse.json({
-            message: `Banner with ID ${id} deleted successfully`
-        });
+        const res = NextResponse.json({ message: `Banner with ID ${id} deleted successfully` });
+
+        res.headers.set('Access-Control-Allow-Origin', req.headers.get('origin') || '*');
+        res.headers.set('Vary', 'Origin');
+
+        return res;
     } catch (error) {
         console.error('Error deleting banner:', error);
-        return NextResponse.json(
-            { error: 'Failed to delete banner' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to delete banner' }, { status: 500 });
     }
+}
+
+// Preflight CORS handler for all methods
+export function OPTIONS(req: NextRequest) {
+    const corsRes = handleCors(req);
+    return corsRes ?? new NextResponse(null, { status: 204 });
 }

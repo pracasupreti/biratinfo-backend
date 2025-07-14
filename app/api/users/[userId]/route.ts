@@ -1,28 +1,53 @@
 import { getAuthor } from "@/actions/user.action";
 import { verifyClerkToken } from "@/lib/auth";
 import { connect } from "@/lib/db";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { handleCors } from "@/lib/cors";
 
 export async function GET(
-    req: Request,
+    req: NextRequest,
     { params }: { params: Promise<{ userId: string }> }
 ) {
-    const header = req.headers.get('Authorization')
-    if (!header) throw new Error("Unauthorized")
-    await verifyClerkToken(header);
+    const corsRes = handleCors(req);
+    if (corsRes) return corsRes;
 
-    const { userId } = await params;
-    if (!userId) throw new Error("Id is required")
+    try {
+        const header = req.headers.get('Authorization');
+        if (!header) throw new Error("Unauthorized");
+        await verifyClerkToken(header);
 
-    await connect();
-    const result = await getAuthor(userId);
+        const { userId } = await params;
+        if (!userId) throw new Error("Id is required");
 
-    if (!result.success) {
-        return NextResponse.json(
-            { error: result.message || 'Failed to fetch user' },
-            { status: result.message === 'Unauthorized' ? 403 : 500 }
+        await connect();
+        const result = await getAuthor(userId);
+
+        if (!result.success) {
+            const response = NextResponse.json(
+                { error: result.message || 'Failed to fetch user' },
+                { status: result.message === 'Unauthorized' ? 403 : 500 }
+            );
+            response.headers.set("Access-Control-Allow-Origin", req.headers.get("origin") || "*");
+            response.headers.set("Vary", "Origin");
+            return response;
+        }
+
+        const res = NextResponse.json({ user: result.user }, { status: 200 });
+        res.headers.set("Access-Control-Allow-Origin", req.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+        return res;
+    } catch (error) {
+        const response = NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Internal Server Error' },
+            { status: 500 }
         );
+        response.headers.set("Access-Control-Allow-Origin", req.headers.get("origin") || "*");
+        response.headers.set("Vary", "Origin");
+        return response;
     }
+}
 
-    return NextResponse.json({ user: result.user }, { status: 200 });
+export function OPTIONS(req: NextRequest) {
+    const corsRes = handleCors(req);
+    return corsRes ?? new NextResponse(null, { status: 204 });
 }

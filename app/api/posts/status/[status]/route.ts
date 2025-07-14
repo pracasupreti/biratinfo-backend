@@ -1,45 +1,70 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { verifyClerkToken } from '@/lib/auth';
 import { connect } from '@/lib/db';
 import { getPostsByStatus } from '@/actions/post.action';
+import { handleCors } from '@/lib/cors';
 
 const ALLOWED_STATUSES = new Set(['draft', 'pending', 'approved', 'scheduled', 'rejected']);
 
 export async function GET(
-    req: Request,
+    req: NextRequest,
     { params }: { params: Promise<{ status: string }> }
 ) {
+    const corsRes = handleCors(req);
+    if (corsRes) return corsRes;
+
     try {
-        // Token verification (throws if invalid)
-        const header = req.headers.get('Authorization')
-        if (!header) throw new Error("Unauthorized")
+        const header = req.headers.get('Authorization');
+        if (!header) throw new Error("Unauthorized");
         await verifyClerkToken(header);
 
         const { status } = await params;
         if (!ALLOWED_STATUSES.has(status)) {
-            return NextResponse.json({
+            const res = NextResponse.json({
                 success: false,
                 message: 'Invalid status parameter',
                 allowedStatuses: Array.from(ALLOWED_STATUSES),
             }, { status: 400 });
+            res.headers.set("Access-Control-Allow-Origin", req.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
 
         await connect();
-
         const posts = await getPostsByStatus(status);
+
         if (!posts.success) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { success: false, message: posts.message },
                 { status: 400 }
             );
+            res.headers.set("Access-Control-Allow-Origin", req.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
-        return NextResponse.json({ success: true, posts }, { status: 200 });
+
+        const res = NextResponse.json(
+            { success: true, posts },
+            { status: 200 }
+        );
+        res.headers.set("Access-Control-Allow-Origin", req.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+        return res;
 
     } catch (err: any) {
         console.error('Status route error:', err.message);
-        return NextResponse.json({ success: false, message: err.message }, {
-            status: err.message.includes('token') ? 401 : 500
-        });
+        const res = NextResponse.json(
+            { success: false, message: err.message },
+            { status: err.message.includes('token') ? 401 : 500 }
+        );
+        res.headers.set("Access-Control-Allow-Origin", req.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+        return res;
     }
+}
+
+export function OPTIONS(req: NextRequest) {
+    const corsRes = handleCors(req);
+    return corsRes ?? new NextResponse(null, { status: 204 });
 }

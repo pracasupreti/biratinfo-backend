@@ -1,41 +1,64 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { verifyClerkToken } from "@/lib/auth";
 import { connect } from "@/lib/db";
 import Advertisement from "@/model/advertisement.model";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
+import { handleCors } from "@/lib/cors";
 
 export async function PATCH(
-    req: Request,
+    req: NextRequest,
     { params }: { params: Promise<{ bannerId: string }> }
 ) {
-    const header = req.headers.get("Authorization");
-    if (!header) throw new Error("Unauthorized");
-    await verifyClerkToken(header);
+    // Handle CORS preflight and headers early
+    const corsRes = handleCors(req);
+    if (corsRes) return corsRes;
 
-    const { bannerId } = await params;
-    if (!bannerId) throw new Error("Id is required");
+    try {
+        const header = req.headers.get("Authorization");
+        if (!header) throw new Error("Unauthorized");
+        await verifyClerkToken(header);
 
-    const { status, category } = await req.json();
-    const objectId = new Types.ObjectId(bannerId);
+        const { bannerId } = await params;
+        if (!bannerId) throw new Error("Id is required");
 
-    await connect();
+        const { status, category } = await req.json();
+        const objectId = new Types.ObjectId(bannerId);
 
-    // Set all others to inactive
-    await Advertisement.updateMany(
-        { name: 'header_banner', category, status: "active", _id: { $ne: objectId } },
-        { $set: { status: "inactive" } }
-    );
+        await connect();
 
-    // Set current to active
-    const updatedBanner = await Advertisement.findByIdAndUpdate(
-        objectId,
-        { status },
-        { new: true }
-    );
+        // Set all others to inactive
+        await Advertisement.updateMany(
+            { name: "header_banner", category, status: "active", _id: { $ne: objectId } },
+            { $set: { status: "inactive" } }
+        );
 
-    if (!updatedBanner) {
-        return NextResponse.json({ error: "Failed to update status" }, { status: 403 });
+        // Set current to active
+        const updatedBanner = await Advertisement.findByIdAndUpdate(
+            objectId,
+            { status },
+            { new: true }
+        );
+
+        if (!updatedBanner) {
+            return NextResponse.json({ error: "Failed to update status" }, { status: 403 });
+        }
+
+        const res = NextResponse.json({ status: 200 });
+
+        // Set CORS headers on success response
+        res.headers.set("Access-Control-Allow-Origin", req.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+
+        return res;
+    } catch (error: any) {
+        console.error("PATCH /banner error:", error);
+        return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
     }
+}
 
-    return NextResponse.json({ status: 200 });
+// Preflight CORS handler
+export function OPTIONS(req: NextRequest) {
+    const corsRes = handleCors(req);
+    return corsRes ?? new NextResponse(null, { status: 204 });
 }

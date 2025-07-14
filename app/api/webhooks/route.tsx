@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { handleUserCreated, handleUserDeleted, handleUserUpdated } from '@/actions/user.action';
+import { handleCors } from '@/lib/cors';
 
 export async function POST(req: Request) {
     console.log('Webhook received!');
@@ -69,4 +70,9 @@ export async function POST(req: Request) {
         console.error('Error handling webhook event:', error)
         return new NextResponse('Internal error', { status: 500 })
     }
+}
+
+export function OPTIONS(req: NextRequest) {
+    const corsRes = handleCors(req);
+    return corsRes ?? new NextResponse(null, { status: 204 });
 }

@@ -3,14 +3,18 @@ import { verifyApiKey, verifyClerkToken } from "@/lib/auth";
 import { connect } from "@/lib/db";
 import User from "@/model/user.model";
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { handleCors } from "@/lib/cors";
 
 export async function GET(
-    req: Request,
+    req: NextRequest,
     { params }: { params: Promise<{ userId: string }> }
 ) {
+    const corsRes = handleCors(req);
+    if (corsRes) return corsRes;
+
     try {
-        verifyApiKey(req)
+        verifyApiKey(req);
 
         const { userId } = await params;
         if (!userId) throw new Error("User ID is required");
@@ -25,11 +29,15 @@ export async function GET(
             );
         }
 
-        return NextResponse.json({
+        const res = NextResponse.json({
             bio: user.bio || '',
             socialLinks: user.socialLinks || {}
         });
 
+        res.headers.set("Access-Control-Allow-Origin", req.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+
+        return res;
     } catch (error: any) {
         return NextResponse.json(
             { error: error.message || 'Failed to fetch user metadata' },
@@ -39,9 +47,12 @@ export async function GET(
 }
 
 export async function POST(
-    req: Request,
+    req: NextRequest,
     { params }: { params: Promise<{ userId: string }> }
 ) {
+    const corsRes = handleCors(req);
+    if (corsRes) return corsRes;
+
     try {
         const header = req.headers.get('Authorization');
 
@@ -88,16 +99,25 @@ export async function POST(
             );
         }
 
-        return NextResponse.json({
+        const res = NextResponse.json({
             success: true,
             bio: updatedUser.bio,
             socialLinks: updatedUser.socialLinks
         });
 
+        res.headers.set("Access-Control-Allow-Origin", req.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+
+        return res;
     } catch (error: any) {
         return NextResponse.json(
             { error: error.message || 'Failed to update user metadata' },
             { status: 500 }
         );
     }
+}
+
+export function OPTIONS(req: NextRequest) {
+    const corsRes = handleCors(req);
+    return corsRes ?? new NextResponse(null, { status: 204 });
 }

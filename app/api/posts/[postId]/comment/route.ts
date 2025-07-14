@@ -1,21 +1,28 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextRequest, NextResponse } from 'next/server';
 import { verifyClerkToken } from '@/lib/auth';
 import { connect } from '@/lib/db';
 import PostInteraction from '@/model/postInteraction.model';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
+import { handleCors } from '@/lib/cors';
 
 export async function GET(
-    request: Request,
+    request: NextRequest,
     { params }: { params: Promise<{ postId: string }> }
 ) {
+    const corsRes = handleCors(request);
+    if (corsRes) return corsRes;
+
     try {
         const { postId } = await params;
         if (!postId) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: 'Post ID is required' },
                 { status: 400 }
             );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
 
         await connect();
@@ -23,65 +30,96 @@ export async function GET(
         const interaction = await PostInteraction.findOne({ postId });
         const comments = interaction?.comments || [];
 
-        return NextResponse.json({
-            comments: comments.slice(-10).reverse(), // Return latest 10 comments in reverse order
+        const res = NextResponse.json({
+            comments: comments.slice(-10).reverse(),
             reachedLimit: comments.length >= 10
         });
+        res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+        return res;
 
     } catch (error: any) {
         console.error('Error fetching comments:', error);
-        return NextResponse.json(
+        const res = NextResponse.json(
             { error: error.message || 'Failed to fetch comments' },
             { status: 500 }
         );
+        res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+        return res;
     }
 }
 
 export async function POST(
-    request: Request,
+    request: NextRequest,
     { params }: { params: Promise<{ postId: string }> }
 ) {
-    const { postId } = await params;
-    if (!postId) throw new Error("Post Id is required")
-
-    const header = request.headers.get('Authorization')
-    if (!header) throw new Error("Unauthorized")
-    await verifyClerkToken(header);
-
-    await connect();
-
-    const { userId } = await auth();
-
-    if (!userId) {
-        return NextResponse.json(
-            { error: 'User ID is required' },
-            { status: 400 }
-        );
-    }
-
-    const User = await clerkClient()
-    const user = await User.users.getUser(userId)
-
-
-    const name = user.fullName || '';
-    const imageUrl = user.imageUrl || '';
-
-    const { content } = await request.json();
-
-    if (!content || content.length > 500) {
-        return NextResponse.json(
-            { error: 'Comment must be between 1 and 500 characters' },
-            { status: 400 }
-        );
-    }
+    const corsRes = handleCors(request);
+    if (corsRes) return corsRes;
 
     try {
+        const { postId } = await params;
+        if (!postId) {
+            const res = NextResponse.json(
+                { error: 'Post Id is required' },
+                { status: 400 }
+            );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
+        }
+
+        const header = request.headers.get('Authorization');
+        if (!header) {
+            const res = NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
+        }
+
+        await verifyClerkToken(header);
+        await connect();
+
+        const { userId } = await auth();
+        if (!userId) {
+            const res = NextResponse.json(
+                { error: 'User ID is required' },
+                { status: 400 }
+            );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
+        }
+
+        const User = await clerkClient();
+        const user = await User.users.getUser(userId);
+        const name = user.fullName || '';
+        const imageUrl = user.imageUrl || '';
+
+        const { content } = await request.json();
+
+        if (!content || content.length > 500) {
+            const res = NextResponse.json(
+                { error: 'Comment must be between 1 and 500 characters' },
+                { status: 400 }
+            );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
+        }
+
         const existing = await PostInteraction.findOne({ postId: postId });
         if (existing?.comments?.length >= 10) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: 'Maximum 10 comments allowed per post' },
                 { status: 400 }
             );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
 
         const newComment = {
@@ -97,163 +135,218 @@ export async function POST(
             { upsert: true, new: true }
         );
 
-        if (!interaction) throw new Error("Failed to add comment")
+        if (!interaction) throw new Error("Failed to add comment");
 
-        return NextResponse.json({
-            comments: interaction.comments.slice(-10), // Return only last 10
+        const res = NextResponse.json({
+            comments: interaction.comments.slice(-10),
             reachedLimit: interaction.comments.length >= 10
         });
+        res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+        return res;
+
     } catch (error: any) {
-        return NextResponse.json(
+        const res = NextResponse.json(
             { error: error.message || 'Failed to add comment' },
             { status: 500 }
         );
+        res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+        return res;
     }
 }
 
-
 export async function PUT(
-    request: Request,
+    request: NextRequest,
     { params }: { params: Promise<{ postId: string }> }
 ) {
+    const corsRes = handleCors(request);
+    if (corsRes) return corsRes;
+
     try {
         const { postId } = await params;
         if (!postId) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: 'Post ID is required' },
                 { status: 400 }
             );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
 
-        // Authentication
         const header = request.headers.get('Authorization');
         if (!header) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: 'Unauthorized' },
                 { status: 401 }
             );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
+
         await verifyClerkToken(header);
         await connect();
 
         const { userId } = await auth();
         if (!userId) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: 'User ID is required' },
                 { status: 400 }
             );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
 
-        // Validate input
         const { commentId, content } = await request.json();
         if (!commentId || !content || content.length > 500) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: 'Invalid comment data' },
                 { status: 400 }
             );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
 
-        // Update comment
         const interaction = await PostInteraction.findOneAndUpdate(
             {
                 postId,
                 'comments._id': commentId,
-                'comments.userId': userId // Ensure user owns the comment
+                'comments.userId': userId
             },
             { $set: { 'comments.$.content': content } },
             { new: true }
         );
 
         if (!interaction) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: 'Comment not found or not authorized' },
                 { status: 404 }
             );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
 
-        return NextResponse.json({
+        const res = NextResponse.json({
             comments: interaction.comments.slice(-10),
             updatedComment: interaction.comments.find((c: { _id: any; }) => c._id === commentId)
         });
+        res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+        return res;
 
     } catch (error: any) {
         console.error('Error in comment PUT:', error);
-        return NextResponse.json(
+        const res = NextResponse.json(
             { error: error.message || 'Failed to update comment' },
             { status: 500 }
         );
+        res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+        return res;
     }
 }
 
-
 export async function DELETE(
-    request: Request,
+    request: NextRequest,
     { params }: { params: Promise<{ postId: string }> }
 ) {
+    const corsRes = handleCors(request);
+    if (corsRes) return corsRes;
+
     try {
         const { postId } = await params;
         if (!postId) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: 'Post ID is required' },
                 { status: 400 }
             );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
 
-        // Authentication
         const header = request.headers.get('Authorization');
         if (!header) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: 'Unauthorized' },
                 { status: 401 }
             );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
+
         await verifyClerkToken(header);
         await connect();
 
         const { userId } = await auth();
         if (!userId) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: 'User ID is required' },
                 { status: 400 }
             );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
 
         const { commentId } = await request.json();
         if (!commentId) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: 'CommentId is required' },
                 { status: 400 }
             );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
 
-        // Remove comment
         const interaction = await PostInteraction.findOneAndUpdate(
             {
                 postId,
                 'comments._id': commentId,
-                'comments.userId': userId // Ensure user owns the comment
+                'comments.userId': userId
             },
             { $pull: { comments: { _id: commentId } } },
             { new: true }
         );
 
         if (!interaction) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: 'Comment not found or not authorized' },
                 { status: 404 }
             );
+            res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+            res.headers.set("Vary", "Origin");
+            return res;
         }
 
-        return NextResponse.json({
+        const res = NextResponse.json({
             comments: interaction.comments.slice(-10),
             reachedLimit: interaction.comments.length >= 10
         });
+        res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+        return res;
 
     } catch (error: any) {
         console.error('Error in comment DELETE:', error);
-        return NextResponse.json(
+        const res = NextResponse.json(
             { error: error.message || 'Failed to delete comment' },
             { status: 500 }
         );
+        res.headers.set("Access-Control-Allow-Origin", request.headers.get("origin") || "*");
+        res.headers.set("Vary", "Origin");
+        return res;
     }
+}
+
+export function OPTIONS(req: NextRequest) {
+    const corsRes = handleCors(req);
+    return corsRes ?? new NextResponse(null, { status: 204 });
 }
