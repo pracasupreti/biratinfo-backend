@@ -1,10 +1,15 @@
 // lib/cors.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+if (!process.env.ALLOWED_ORIGINS) {
+  throw new Error('Missing environment variable: ALLOWED_ORIGINS');
+}
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
+
 
 export function handleCors(req: NextRequest): NextResponse | null {
   const origin = req.headers.get('origin') || '';
