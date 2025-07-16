@@ -6,6 +6,7 @@ import { auth } from '@clerk/nextjs/server'
 import { getDBId, getDBIdByClerId } from './user.action'
 import Category from '@/model/category.model'
 import Tag from '@/model/tags.model'
+import { assignCategoryToApprovedPost } from '@/lib/assignCategory'
 
 
 interface TagOperationResult {
@@ -117,27 +118,8 @@ export async function submitPost(data: any) {
             const mongoose = require('mongoose');
             objectId = new mongoose.Types.ObjectId();
 
-            const category = data.category;
-            let categoryDoc = await Category.findOne({ category });
-
-            if (!categoryDoc) {
-                categoryId = 1;
-                categoryDoc = await Category.create({
-                    category,
-                    posts: [objectId],
-                    postCount: 1,
-                    status: 'approved',
-                });
-            } else {
-                categoryId = categoryDoc.postCount + 1;
-                await Category.updateOne(
-                    { _id: categoryDoc._id },
-                    {
-                        $inc: { postCount: 1 },
-                        $push: { posts: objectId }
-                    }
-                );
-            }
+            const categoryId = await assignCategoryToApprovedPost(data.category, objectId);
+            data.categoryId = categoryId;
 
             // Handle tag updates 
             if (data.tags && data.tags.length > 0) {
@@ -277,7 +259,6 @@ export async function updatePost(postId: string, updatedData: any) {
                 { title: updatedData.title }
             ]
         });
-        console.log(existingPost)
 
         if (existingPost) {
             return { success: false, message: 'A post with this title already exists', code: 409 }
@@ -286,35 +267,14 @@ export async function updatePost(postId: string, updatedData: any) {
 
         //Adding Category document
         if (updatedData.status === 'approved') {
-            const category = updatedData.category;
 
-            // Find existing category
-            let categoryDoc = await Category.findOne({ category });
-
-            let categoryId;
-
-            if (!categoryDoc) {
-                categoryId = 1;
-
-                categoryDoc = await Category.create({
-                    category,
-                    posts: [objectId],
-                    postCount: 1,
-                    status: 'approved',
-                });
-            } else {
-                categoryId = categoryDoc.postCount + 1;
-
-                await Category.updateOne(
-                    { _id: categoryDoc._id },
-                    {
-                        $inc: { postCount: 1 },
-                        $push: { posts: objectId }
-                    }
-                );
-            }
-
+            const categoryId = await assignCategoryToApprovedPost(
+                updatedData.category,
+                postId,
+                updatedData.categoryId
+            );
             updatedData.categoryId = categoryId;
+
 
             // Handle tag updates 
             if (updatedData.tags && updatedData.tags.length > 0) {
@@ -430,6 +390,21 @@ export async function getLatestSummaryByCategory(category: string) {
         });
 }
 
+export async function getLatestSummaryByCategoryByNetwork(category: string, network: string) {
+    return await Post.find({ category, status: 'approved', postInNetwork: network })
+        .sort({ createdAt: -1 })
+        .select('title excerpt category categoryId authors heroBanner createdAt updatedAt featuredIn')
+        .populate({
+            path: 'authors',
+            model: 'User',
+            localField: 'authors',
+            foreignField: 'clerkId',
+            justOne: false,
+            select: 'avatar firstName lastName clerkId username',
+            match: { clerkId: { $exists: true } }
+        });
+}
+
 export async function getLatestSummary(categories: string[]) {
     return await Post.find({
         category: { $in: categories },
@@ -449,11 +424,49 @@ export async function getLatestSummary(categories: string[]) {
         });
 }
 
+export async function getLatestSummaryByNetwork(network: string, categories: string[]) {
+    return await Post.find({
+        category: { $in: categories },
+        status: 'approved',
+        featuredIn: { $ne: network },
+        postInNetwork: network
+    })
+        .sort({ createdAt: -1 })
+        .select('title excerpt category categoryId authors heroBanner createdAt updatedAt featuredIn')
+        .populate({
+            path: 'authors',
+            model: 'User',
+            localField: 'authors',
+            foreignField: 'clerkId',
+            justOne: false,
+            select: 'avatar firstName lastName clerkId username',
+            match: { clerkId: { $exists: true } }
+        });
+}
+
 
 export async function getFeaturedPost() {
     return await Post.findOne({
         status: 'approved',
         featuredIn: { $in: ['biratinfo.com'] }
+    })
+        .sort({ createdAt: -1 }) // latest first
+        .select('title excerpt category categoryId authors readingTime heroBanner createdAt updatedAt')
+        .populate({
+            path: 'authors',
+            model: 'User',
+            localField: 'authors',
+            foreignField: 'clerkId',
+            justOne: false,
+            select: 'avatar firstName lastName clerkId username',
+            match: { clerkId: { $exists: true } }
+        });
+}
+
+export async function getFeaturedPostByNetwork(network: string) {
+    return await Post.findOne({
+        status: 'approved',
+        featuredIn: { $in: [network] }
     })
         .sort({ createdAt: -1 }) // latest first
         .select('title excerpt category categoryId authors readingTime heroBanner createdAt updatedAt')
