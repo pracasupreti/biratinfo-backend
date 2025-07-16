@@ -4,7 +4,6 @@ import { connect } from '@/lib/db'
 import Post from '@/model/post.model'
 import { auth } from '@clerk/nextjs/server'
 import { getDBId, getDBIdByClerId } from './user.action'
-import Category from '@/model/category.model'
 import Tag from '@/model/tags.model'
 import { assignCategoryToApprovedPost } from '@/lib/assignCategory'
 

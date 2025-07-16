@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 import { connect } from '@/lib/db';
-import { getFeaturedPost, getFeaturedPostByNetwork } from '@/actions/post.action';
+import { getFeaturedPostByNetwork } from '@/actions/post.action';
 import { verifyApiKey } from '@/lib/auth';
 import { handleCors } from '@/lib/cors';
 
