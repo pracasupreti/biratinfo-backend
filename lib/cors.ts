@@ -11,11 +11,14 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   .filter(Boolean);
 
 
+const ALWAYS_ALLOWED_ORIGIN = 'https://www.biratinfo.com';
+
+
 export function handleCors(req: NextRequest): NextResponse | null {
   const origin = req.headers.get('origin') || '';
   const res = new NextResponse();
 
-  if (allowedOrigins.includes(origin)) {
+  if (allowedOrigins.includes(origin) || origin === ALWAYS_ALLOWED_ORIGIN) {
     res.headers.set('Access-Control-Allow-Origin', origin);
     res.headers.set('Vary', 'Origin');
   }
