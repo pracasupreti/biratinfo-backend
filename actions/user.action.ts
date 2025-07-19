@@ -1,8 +1,24 @@
 'use server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
+import slugify from 'slugify'
 import User from '@/model/user.model'
 import { connect } from '@/lib/db'
 import Post from '@/model/post.model'
+
+async function generateUniqueUsername(firstName: string, lastName: string) {
+    let base = slugify(`${firstName || 'user'} ${lastName || ''}`, { lower: true });
+    if (!base) base = 'user';
+
+    let username = base;
+    let counter = 1;
+
+    while (await User.findOne({ username })) {
+        username = `${base}${counter}`;
+        counter++;
+    }
+
+    return username;
+}
 
 //create new user
 export async function handleUserCreated(user: any) {
@@ -18,18 +34,31 @@ export async function handleUserCreated(user: any) {
         })
 
         // Save user to MongoDB
-        const { id, email_addresses, first_name, last_name, username, image_url } = user
+        const { id, email_addresses, first_name, last_name, username: existingUsername, image_url } = user
 
         const existingUser = await User.findOne({ clerkId: id })
         if (existingUser) {
             return { success: false, message: 'User already exists' }
         }
+
+        // Generate and assign unique username if missing
+        let finalUsername = existingUsername;
+
+        if (!existingUsername) {
+            finalUsername = await generateUniqueUsername(first_name, last_name);
+
+            // Update username in Clerk
+            await client.users.updateUser(id, {
+                username: finalUsername,
+            });
+        }
+
         const newUser = {
             clerkId: id,
             email: email_addresses?.[0]?.email_address,
             firstName: first_name,
             lastName: last_name,
-            username: username || '',
+            username: finalUsername || '',
             role: 'manager',
             avatar: image_url
 
