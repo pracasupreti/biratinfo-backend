@@ -198,7 +198,15 @@ export async function getAllPostsByStatus(status: string) {
 
         const posts = await Post.find({
             status: status
-        }).sort({ createdAt: -1 }).lean(); //len converts non-serializable data into plain JSON object but cannot convert all so for some we need to do manually
+        }).sort({ createdAt: -1 }).populate({
+            path: 'authors',
+            model: 'User',
+            localField: 'authors',
+            foreignField: 'clerkId',
+            justOne: false,
+            select: 'avatar firstName lastName clerkId username',
+            match: { clerkId: { $exists: true } }
+        }).lean(); //len converts non-serializable data into plain JSON object but cannot convert all so for some we need to do manually
         // Deeply convert to plain JSON object
         const serializedPost = JSON.parse(JSON.stringify(posts));
 
@@ -221,7 +229,15 @@ export async function getPostsByStatus(status: string) {
         const posts = await Post.find({
             userId: db_id,
             status: status
-        }).sort({ createdAt: -1 }).lean(); //len converts non-serializable data into plain JSON object but cannot convert all so for some we need to do manually
+        }).sort({ createdAt: -1 }).populate({
+            path: 'authors',
+            model: 'User',
+            localField: 'authors',
+            foreignField: 'clerkId',
+            justOne: false,
+            select: 'avatar firstName lastName clerkId username',
+            match: { clerkId: { $exists: true } }
+        }).lean(); //len converts non-serializable data into plain JSON object but cannot convert all so for some we need to do manually
 
 
         // Deeply convert to plain JSON object

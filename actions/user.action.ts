@@ -228,27 +228,14 @@ export async function getAuthors() {
 
 export async function getAuthor(userId: string) {
     try {
-        const { userId: currentUserId } = await auth();
+        const { userId } = await auth();
 
-        if (!currentUserId) {
+        if (!userId) {
             throw new Error('Unauthorized');
         }
 
         const User = await clerkClient();
         const user = await User.users.getUser(userId);
-
-        // Verify the requesting user has permission to view this author
-        const currentUser = await User.users.getUser(currentUserId);
-        const currentUserRole = currentUser.publicMetadata?.role as string;
-        const targetUserRole = user.publicMetadata?.role as string;
-
-        if (currentUserRole === 'editor' && !['editor', 'manager'].includes(targetUserRole)) {
-            throw new Error('Unauthorized to view this user');
-        }
-
-        if (currentUserRole === 'manager' && targetUserRole !== 'manager') {
-            throw new Error('Unauthorized to view this user');
-        }
 
         return {
             success: true,
@@ -259,12 +246,11 @@ export async function getAuthor(userId: string) {
                 role: user.publicMetadata?.role ?? ''
             }
         };
-
     } catch (error) {
-        console.error('Error fetching user:', error);
+        console.error('Error fetching current user:', error);
         return {
             success: false,
-            message: error instanceof Error ? error.message : 'Failed to fetch user'
+            message: error instanceof Error ? error.message : 'Failed to fetch current user'
         };
     }
 }
