@@ -174,7 +174,15 @@ export async function getPostByUser() {
 export async function getPostById(postId: string) {
     try {
         await connect();
-        const post = await Post.findById(postId).lean();
+        const post = await Post.findById(postId).populate({
+            path: 'authors',
+            model: 'User',
+            localField: 'authors',
+            foreignField: 'clerkId',
+            justOne: false,
+            select: 'avatar firstName lastName clerkId username',
+            match: { clerkId: { $exists: true } }
+        }).lean();
 
         if (!post) {
             return { success: false, message: 'Post not found' };
