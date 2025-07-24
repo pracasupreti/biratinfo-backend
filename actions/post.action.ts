@@ -98,7 +98,6 @@ export async function submitPost(data: any) {
 
     try {
         await connect();
-        console.log(data)
 
         const existingPost = await Post.findOne({
             $or: [
@@ -174,15 +173,7 @@ export async function getPostByUser() {
 export async function getPostById(postId: string) {
     try {
         await connect();
-        const post = await Post.findById(postId).populate({
-            path: 'authors',
-            model: 'User',
-            localField: 'authors',
-            foreignField: 'clerkId',
-            justOne: false,
-            select: 'avatar firstName lastName clerkId username',
-            match: { clerkId: { $exists: true } }
-        }).lean();
+        const post = await Post.findById(postId).lean();
 
         if (!post) {
             return { success: false, message: 'Post not found' };
@@ -206,15 +197,7 @@ export async function getAllPostsByStatus(status: string) {
 
         const posts = await Post.find({
             status: status
-        }).sort({ createdAt: -1 }).populate({
-            path: 'authors',
-            model: 'User',
-            localField: 'authors',
-            foreignField: 'clerkId',
-            justOne: false,
-            select: 'avatar firstName lastName clerkId username',
-            match: { clerkId: { $exists: true } }
-        }).lean(); //len converts non-serializable data into plain JSON object but cannot convert all so for some we need to do manually
+        }).sort({ createdAt: -1 }).lean(); //len converts non-serializable data into plain JSON object but cannot convert all so for some we need to do manually
         // Deeply convert to plain JSON object
         const serializedPost = JSON.parse(JSON.stringify(posts));
 
@@ -237,15 +220,7 @@ export async function getPostsByStatus(status: string) {
         const posts = await Post.find({
             userId: db_id,
             status: status
-        }).sort({ createdAt: -1 }).populate({
-            path: 'authors',
-            model: 'User',
-            localField: 'authors',
-            foreignField: 'clerkId',
-            justOne: false,
-            select: 'avatar firstName lastName clerkId username',
-            match: { clerkId: { $exists: true } }
-        }).lean(); //len converts non-serializable data into plain JSON object but cannot convert all so for some we need to do manually
+        }).sort({ createdAt: -1 }).lean(); //len converts non-serializable data into plain JSON object but cannot convert all so for some we need to do manually
 
 
         // Deeply convert to plain JSON object

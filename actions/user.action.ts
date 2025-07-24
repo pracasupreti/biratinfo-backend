@@ -255,6 +255,33 @@ export async function getAuthor(userId: string) {
     }
 }
 
+export async function getAuthorById(userId: string) {
+    try {
+        if (!userId) {
+            throw new Error('Unauthorized');
+        }
+
+        const User = await clerkClient();
+        const user = await User.users.getUser(userId);
+
+        return {
+            success: true,
+            user: {
+                id: user.id,
+                name: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
+                imageUrl: user.imageUrl,
+                role: user.publicMetadata?.role ?? ''
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching current user:', error);
+        return {
+            success: false,
+            message: error instanceof Error ? error.message : 'Failed to fetch current user'
+        };
+    }
+}
+
 export async function getAuthorDetails(username: string) {
     try {
         await connect();
