@@ -1,7 +1,6 @@
 import { connect } from "@/lib/db";
 import { auth } from "@clerk/nextjs/server";
 import { getDBId } from "./user.action";
-import User from "@/model/user.model";
 import Network from "@/model/network.model";
 
 export async function getAllNetworks() {
@@ -99,10 +98,38 @@ export async function updateNetwork(id: string, data: any) {
         };
 
     } catch (error: any) {
-        console.error('Error creating network:', error);
+        console.error('Error updating network:', error);
         return {
             success: false,
-            message: error.message || 'Failed to create network',
+            message: error.message || 'Failed to update network',
+            error: error
+        };
+    }
+}
+
+export async function deleteNetwork(id: string) {
+    try {
+        await connect();
+        const existingNetwork = await Network.findOne({ _id: id })
+        if (!existingNetwork) {
+            return { success: false, message: 'Network not found' }
+        }
+
+        await Network.findOneAndDelete(
+            { _id: id },
+
+        );
+
+        return {
+            success: true,
+            message: 'Network deleting successfully'
+        };
+
+    } catch (error: any) {
+        console.error('Error deleting network:', error);
+        return {
+            success: false,
+            message: error.message || 'Failed to delete network',
             error: error
         };
     }

@@ -21,7 +21,8 @@ const isPublicRoute = createRouteMatcher([
     '/api/header-banners(.*)',
     '/api/networks(.*)',
     '/api/tags',
-    '/api/sponsor-banners(.*)'
+    '/api/sponsor-banners(.*)',
+    '/api/roadblocks(.*)'
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
