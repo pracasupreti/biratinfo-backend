@@ -27,6 +27,7 @@ export async function GET(req: NextRequest,
             'education',
             'entertainment',
             'culture',
+            'politics'
         ]);
 
         if (!post) throw new Error("No approved posts found");
